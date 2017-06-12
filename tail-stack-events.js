@@ -20,11 +20,11 @@ program
 
 program.on('--help', () => {
 	console.log(`  Credentials:
-    By default, this script will use the default credentials you have 
-    configured on your machine (either from the "default" profile in 
-    ~/.aws/credentials or in various environment variables). If you 
-    wish to use a different profile, specify the name in the --profile 
-    option. If you with to specify the key/secret manually, use the 
+    By default, this script will use the default credentials you have
+    configured on your machine (either from the "default" profile in
+    ~/.aws/credentials or in various environment variables). If you
+    wish to use a different profile, specify the name in the --profile
+    option. If you with to specify the key/secret manually, use the
     --key and --secret options.`);
 
 	console.log();
@@ -33,9 +33,12 @@ program.on('--help', () => {
 
     Print five previous events and successive events until stack update is complete:
       tail-stack-events -f --die -n 5 -s my-stack
-    
+
     Print last 20 events for a stack in us-west-2 region
-      tail-stack-events -n 20 -s my-stack --region us-west-2`);
+      tail-stack-events -n 20 -s my-stack --region us-west-2
+
+    Using a different credentials profile from ~/.aws/credentials
+      tail-stack-events -s my-stack --profile my-profile`);
 });
 
 program.parse(process.argv);

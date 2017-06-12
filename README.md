@@ -30,7 +30,18 @@ you setup the AWS CLI first.
     -f,--follow             Like "tail -f", poll forever
     -n,--number [num]       Number of messages to display (max 100, defaults to 10)
     --outputs               Print out the stack outputs after tailing is complete
+    --profile [name]        Name of credentials profile to use
+    --key [key]             API key to use connect to AWS
+    --secret [secret]       API secret to use to connect to AWS
     --region [region]       The AWS region the stack is in (defaults to us-east-1)
+
+  Credentials:
+    By default, this script will use the default credentials you have
+    configured on your machine (either from the "default" profile in
+    ~/.aws/credentials or in various environment variables). If you
+    wish to use a different profile, specify the name in the --profile
+    option. If you with to specify the key/secret manually, use the
+    --key and --secret options.
 
   Examples:
 
