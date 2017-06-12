@@ -17,9 +17,6 @@ onto your PATH: `npm install -g tail-stack-events`
 ## Usage
 If installed locally, the path will be `node_modules/.bin/tail-stack-events`.
 
-It will use your locally configured AWS credentials. I recommend
-you setup the AWS CLI first.
-
 ```
   Usage: tail-stack-events [options]
 
