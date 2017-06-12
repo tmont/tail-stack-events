@@ -40,6 +40,3 @@ you setup the AWS CLI first.
     Print last 20 events for a stack in us-west-2 region
       tail-stack-events -n 20 -s my-stack --region us-west-2
 ```
-
-## Screenshots
-
