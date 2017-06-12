@@ -1,5 +1,7 @@
 # tail-stack-events
 
+[![NPM version](https://img.shields.io/npm/v/tail-stack-events.svg)](https://www.npmjs.com/package/tail-stack-events)
+
 This is a convenient little CLI script (written in Node) to tail
 the latest AWS CloudFormation stack events. The UI in the AWS
 console kind of sucks for getting a bearing on the status of
