@@ -10,7 +10,7 @@ program
 	.version(require('./package.json').version)
 	.option('-s,--stack-name <name>', 'Name of the stack')
 	.option('--die', 'Kill the tail when a stack completion event occurs', false)
-	.option('-f,--follow', 'Like "tail -f", poll forever', false)
+	.option('-f,--follow', 'Like "tail -f", poll forever (ignored if --die is present)', false)
 	.option('-n,--number [num]', 'Number of messages to display (max 100, defaults to 10)', 10)
 	.option('--outputs', 'Print out the stack outputs after tailing is complete')
 	.option('--profile [name]', 'Name of credentials profile to use')
@@ -79,6 +79,7 @@ let lastEvent = null;
 let lastApiCall = 0;
 
 function getRecentStackEvents(callback) {
+	lastApiCall = Date.now();
 	const params = {
 		StackName: stackName
 	};
@@ -133,7 +134,7 @@ function formatEvent(event) {
 		const month = months[ts.getMonth()];
 		const date = ts.getDate();
 		const oneYearAgo = new Date();
-		oneYearAgo.setFullYear(oneYearAgo.getFullYear());
+		oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
 
 		if (ts < oneYearAgo) {
 			return `${month} ${date} ${year}`;
@@ -151,17 +152,18 @@ function formatEvent(event) {
 	const messages = [
 		[15, null, formatDate(event.Timestamp)],
 		[25, 'yellow', event.LogicalResourceId],
-		[20, 'gray', event.ResourceType.replace(/^AWS::/, '')],
+		[25, 'gray', event.ResourceType.replace(/^AWS::/, '')],
 		[25, statusColor, status],
-		[60, null, event.ResourceStatusReason]
+		[50, null, event.ResourceStatusReason]
 	];
 
 	function pad(str, maxLen) {
 		const padding = maxLen - str.length;
 
 		if (str.length > maxLen) {
-			const midpoint = Math.floor(maxLen / 2);
-			return str.substring(0, midpoint) + String.fromCharCode(0x2026) + str.substring(str.length - midpoint + 1);
+			return str.substring(0, Math.floor(maxLen / 2)) +
+				String.fromCharCode(0x2026) +
+				str.substring(str.length - Math.ceil(maxLen / 2) + 1);
 		}
 
 		return str + ' '.repeat(padding);
@@ -222,11 +224,10 @@ async.doWhilst(printEvents, stopTailing, (err) => {
 		process.exit(1);
 	}
 
-	const params = {
-		StackName: stackName
-	};
-
 	if (printOutputs) {
+		const params = {
+			StackName: stackName
+		};
 		cfn.describeStacks(params, (err, result) => {
 			if (err) {
 				console.error(chalk.red(err.message));
