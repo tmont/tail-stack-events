@@ -140,11 +140,11 @@ function formatEvent(event) {
 			return `${month} ${date} ${year}`;
 		}
 
-		const pad2 = (str) => {
-			return pad(str, 2);
+		const pad0 = (str) => {
+			return '0'.repeat(2 - str.toString().length) + str;
 		};
 
-		const time = `${pad2(ts.getHours())}:${pad2(ts.getMinutes())}:${pad2(ts.getSeconds())}`;
+		const time = `${pad0(ts.getHours())}:${pad0(ts.getMinutes())}:${pad0(ts.getSeconds())}`;
 
 		return `${month} ${date} ${time}`;
 	}
