@@ -9,10 +9,10 @@
 
 	"bin": "tail-stack-events.js",
 
-	"dependencies": {
-		"aws-sdk": "2.x",
-		"async": ">=1",
-		"commander": "2.x",
-		"chalk": "1.x"
+	"peerDependencies": {
+		"aws-sdk": "2.x"
+	},
+	"devDependencies": {
+		"aws-sdk": "2.x"
 	}
 }

@@ -2,56 +2,149 @@
 'use strict';
 
 const aws = require('aws-sdk');
-const async = require('async');
-const program = require('commander');
-const chalk = require('chalk');
+const path = require('path');
 
-program
-	.version(require('./package.json').version)
-	.option('-s,--stack-name <name>', 'Name of the stack')
-	.option('--die', 'Kill the tail when a stack completion event occurs', false)
-	.option('-f,--follow', 'Like "tail -f", poll forever (ignored if --die is present)', false)
-	.option('-n,--number [num]', 'Number of messages to display (max 100, defaults to 10)', 10)
-	.option('--outputs', 'Print out the stack outputs after tailing is complete')
-	.option('--profile [name]', 'Name of credentials profile to use')
-	.option('--key [key]', 'API key to use connect to AWS')
-	.option('--secret [secret]', 'API secret to use to connect to AWS')
-	.option('--region [region]', 'The AWS region the stack is in (defaults to us-east-1)');
+const red = '\x1b[31m';
+const reset = '\x1b[0m';
+const bold = '\x1b[1m';
+const cyan = '\x1b[36m';
+const yellow = '\x1b[33m';
+const blue = '\x1b[34m';
+const green = '\x1b[32m';
+const gray = '\x1b[30;1m';
 
-program.on('--help', () => {
-	console.log(`  Credentials:
-    By default, this script will use the default credentials you have
-    configured on your machine (either from the "default" profile in
-    ~/.aws/credentials or in various environment variables). If you
-    wish to use a different profile, specify the name in the --profile
-    option. If you with to specify the key/secret manually, use the
-    --key and --secret options.`);
+const wrapColor = (color, msg) => `${color}${msg}${reset}`;
 
+const chalk = {
+	red: wrapColor.bind(null, red),
+	cyan: wrapColor.bind(null, cyan),
+	bold: wrapColor.bind(null, bold),
+	yellow: wrapColor.bind(null, yellow),
+	green: wrapColor.bind(null, green),
+	gray: wrapColor.bind(null, gray),
+	blue: wrapColor.bind(null, blue),
+};
+
+const async = {
+	doWhilst: (fn, test, done) => {
+		const next = (err) => {
+			if (err) {
+				done(err);
+				return;
+			}
+
+			if (!test()) {
+				done();
+				return;
+			}
+
+			setTimeout(() => fn(next));
+		};
+
+		fn(next);
+	}
+};
+
+const usage = () => {
+
+	console.log(`CloudFormation event tailer
+
+Usage: ${path.basename(__filename)} [--port port] [--procfile file] [...processes,...]
+
+--help-h          Show this message
+--stack-name,-s   Name of the stack
+--die             Kill the tail when a stack completion event occurs
+--follow,-f       Like "tail -f", poll forever (ignored if --die is present)
+--number,-n num   Number of messages to display (max 100, defaults to 10)
+--outputs         Print out the stack outputs after tailing is complete
+--profile name    Name of credentials profile to use
+--key key         API key to use connect to AWS
+--secret secret   API secret to use to connect to AWS
+--region region   The AWS region the stack is in (defaults to us-east-1)
+`);
+	console.log(`Credentials:
+  By default, this script will use the default credentials you have
+  configured on your machine (either from the "default" profile in
+  ~/.aws/credentials or in various environment variables). If you
+  wish to use a different profile, specify the name in the --profile
+  option. If you with to specify the key/secret manually, use the
+  --key and --secret options.`);
 	console.log();
 
-	console.log(`  Examples:
+	console.log(`Examples:
 
-    Print five previous events and successive events until stack update is complete:
-      tail-stack-events -f --die -n 5 -s my-stack
+  Print five previous events and successive events until stack update is complete:
+    tail-stack-events -f --die -n 5 -s my-stack
 
-    Print last 20 events for a stack in us-west-2 region
-      tail-stack-events -n 20 -s my-stack --region us-west-2
+  Print last 20 events for a stack in us-west-2 region
+    tail-stack-events -n 20 -s my-stack --region us-west-2
 
-    Using a different credentials profile from ~/.aws/credentials
-      tail-stack-events -s my-stack --profile my-profile`);
-});
+  Using a different credentials profile from ~/.aws/credentials
+    tail-stack-events -s my-stack --profile my-profile`);
+};
 
-program.parse(process.argv);
+let stackName = null;
+let die = false;
+let follow = false;
+let numEvents = null;
+let printOutputs = false;
+let credentialsProfile = null;
+let manualKey = null;
+let manualSecret = null;
+let region = 'us-east-1';
 
-const region = program.region || 'us-east-1';
-const stackName = program.stackName;
-const follow = !!program.follow;
-const die = !!program.die;
-const numInitialEvents = parseInt(program.number) || 5;
-const printOutputs = !!program.outputs;
-const credentialsProfile = program.profile;
-const manualKey = program.key;
-const manualSecret = program.secret;
+const parseArgs = () => {
+	const args = process.argv.slice(2);
+	for (let i = 0; i < args.length; i++) {
+		const arg = args[i];
+		switch (arg) {
+			case '--help':
+			case '-h':
+				usage();
+				process.exit(0);
+				break;
+			case '--stack-name':
+			case '-s':
+				stackName = args[++i];
+				break;
+			case '--die':
+				die = true;
+				break;
+			case '--follow':
+			case '-f':
+				follow = true;
+				break;
+			case '--number':
+			case '-n':
+				numEvents = parseInt(args[++i]);
+				break;
+			case '--outputs':
+				printOutputs = true;
+				break;
+			case '--profile':
+				credentialsProfile = args[++i];
+				break;
+			case '--key':
+				manualKey = args[++i];
+				break;
+			case '--secret':
+				manualSecret = args[++i];
+				break;
+			case '--region':
+				region = args[++i];
+				break;
+			default:
+				console.error(`unknown option "${arg}"`);
+				process.exit(1);
+				break;
+		}
+	}
+};
+
+parseArgs();
+
+const numInitialEvents = parseInt(numEvents) || 5;
+numEvents = parseInt(numEvents) || 10;
 
 if (!stackName) {
 	console.error('a stack name must be specified');
@@ -140,9 +233,7 @@ function formatEvent(event) {
 			return `${month} ${date} ${year}`;
 		}
 
-		const pad0 = (str) => {
-			return '0'.repeat(2 - str.toString().length) + str;
-		};
+		const pad0 = str => '0'.repeat(2 - str.toString().length) + str;
 
 		const time = `${pad0(ts.getHours())}:${pad0(ts.getMinutes())}:${pad0(ts.getSeconds())}`;
 
@@ -182,7 +273,7 @@ function formatEvent(event) {
 	console.log(message.join(' '));
 }
 
-function stopTailing() {
+function shouldKeepTailing() {
 	if (follow) {
 		return true;
 	}
@@ -210,15 +301,17 @@ function printEvents(next) {
 
 		events.forEach(formatEvent);
 
-		//make an API call every 3 seconds at the most
-		const waitTime = Math.max(100, 3000 - (Date.now() - lastApiCall));
-		setTimeout(() => {
-			next();
-		}, waitTime);
+		if (shouldKeepTailing()) {
+			//make an API call every 3 seconds at the most
+			const waitTime = Math.max(100, 3000 - (Date.now() - lastApiCall));
+			setTimeout(() => {
+				next();
+			}, waitTime);
+		}
 	});
 }
 
-async.doWhilst(printEvents, stopTailing, (err) => {
+async.doWhilst(printEvents, shouldKeepTailing, (err) => {
 	if (err) {
 		console.error(err);
 		process.exit(1);
