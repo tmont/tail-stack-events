@@ -6,13 +6,11 @@
 		"type": "git",
 		"url": "https://github.com/tmont/tail-stack-events.git"
 	},
-
 	"bin": "tail-stack-events.js",
-
-	"peerDependencies": {
+	"dependencies": {
 		"aws-sdk": "2.x"
 	},
 	"devDependencies": {
-		"aws-sdk": "2.x"
+		"aws-sdk": "^2.401.0"
 	}
 }

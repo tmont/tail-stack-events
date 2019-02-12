@@ -61,6 +61,7 @@ Usage: ${path.basename(__filename)} [--port port] [--procfile file] [...processe
 --key key         API key to use connect to AWS
 --secret secret   API secret to use to connect to AWS
 --region region   The AWS region the stack is in (defaults to us-east-1)
+--assume-role <ARN>   The AWS IAM role ARN to assume, 
 `);
 	console.log(`Credentials:
   By default, this script will use the default credentials you have
@@ -92,12 +93,22 @@ let credentialsProfile = null;
 let manualKey = null;
 let manualSecret = null;
 let region = 'us-east-1';
+// while this is not fixed: https://github.com/aws/aws-sdk-js/issues/1916
+// we ask for role ARN explicitly
+let assumeRole = null;
+// Let the program auto-detect profiles if no profile can be constructed, e.g
+// because of `credential_source`.
+let autoDetectProfiles = false;
+let defaultProviders = [];
 
 const parseArgs = () => {
 	const args = process.argv.slice(2);
 	for (let i = 0; i < args.length; i++) {
 		const arg = args[i];
 		switch (arg) {
+			case '--assume-role':
+				assumeRole = args[++i];
+				break;
 			case '--help':
 			case '-h':
 				usage();
@@ -155,9 +166,14 @@ if (credentialsProfile) {
 	if (manualKey || manualSecret) {
 		console.error('both profile and key/secret given, ignoring key/secret');
 	}
-
-	const credentials = new aws.SharedIniFileCredentials({ profile: credentialsProfile });
-	aws.config.update({ credentials: credentials });
+	let credentials = new aws.SharedIniFileCredentials({ profile: credentialsProfile });
+	credentials.refresh((err) => {
+		if (err) { 
+			autoDetectProfiles = true;
+			console.error(`Cannot create profile "${credentialsProfile}"! Will use auto-detect features of SDK`);
+		}
+	});
+	defaultProviders.push(credentials);
 } else if (manualKey || manualSecret) {
 	aws.config.update({
 		accessKeyId: manualKey,
@@ -165,7 +181,23 @@ if (credentialsProfile) {
 	});
 }
 
+if (autoDetectProfiles) {
+	defaultProviders.push(
+		function () { return new AWS.EnvironmentCredentials('AWS'); },
+		function () { return new AWS.EnvironmentCredentials('AMAZON'); },
+		function () { return new AWS.EC2MetadataCredentials(); }
+	)
+}
+
+aws.CredentialProviderChain.defaultProviders = defaultProviders;
 aws.config.update({ region: region });
+
+if (assumeRole) {
+	aws.config.credentials = new aws.ChainableTemporaryCredentials({
+		params: {RoleArn: assumeRole},
+		masterCredentials: aws.config.credentials
+		});
+}
 
 const cfn = new aws.CloudFormation();
 let lastEvent = null;
