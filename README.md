@@ -37,6 +37,7 @@ If installed locally, the path will be `node_modules/.bin/tail-stack-events`.
  --key key         API key to use connect to AWS
  --secret secret   API secret to use to connect to AWS
  --region region   The AWS region the stack is in (defaults to us-east-1)
+ --assume-role     The AWS IAM role ARN to assume
  
  Credentials:
    By default, this script will use the default credentials you have
@@ -45,6 +46,8 @@ If installed locally, the path will be `node_modules/.bin/tail-stack-events`.
    wish to use a different profile, specify the name in the --profile
    option. If you with to specify the key/secret manually, use the
    --key and --secret options.
+   If named profile cannot be constructed, program will still try to use 
+   default credentials.  
  
  Examples:
  

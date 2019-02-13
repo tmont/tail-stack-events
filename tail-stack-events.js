@@ -61,7 +61,7 @@ Usage: ${path.basename(__filename)} [--port port] [--procfile file] [...processe
 --key key         API key to use connect to AWS
 --secret secret   API secret to use to connect to AWS
 --region region   The AWS region the stack is in (defaults to us-east-1)
---assume-role <ARN>   The AWS IAM role ARN to assume, 
+--assume-role <ARN>   The AWS IAM role ARN to assume
 `);
 	console.log(`Credentials:
   By default, this script will use the default credentials you have
