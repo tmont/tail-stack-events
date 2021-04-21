@@ -1,0 +1,34 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "tail-stack-events test"
+
+Resources:
+  TailStackEventsUser:
+    Type: "AWS::IAM::User"
+    Properties:
+      Path: "/glacius/"
+      Policies:
+        - PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: "Allow"
+                Action:
+                  - "cloudwatch:PutMetricData"
+                Resource: "*"
+          PolicyName: "write-metrics"
+      UserName: "tail-stack-events"
+
+  TailStackEventsUserAccessKey:
+    Type: "AWS::IAM::AccessKey"
+    Properties:
+      UserName: !Ref TailStackEventsUser
+
+Outputs:
+  User:
+    Description: "IAM user"
+    Value: !Ref "TailStackEventsUser"
+  AccessKeyId:
+    Description: "IAM user access key ID"
+    Value: !Ref "TailStackEventsUserAccessKey"
+  SecretAccessKey:
+    Description: "IAM user secret"
+    Value: !GetAtt [ "TailStackEventsUserAccessKey", "SecretAccessKey" ]

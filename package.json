@@ -6,13 +6,14 @@
 		"type": "git",
 		"url": "https://github.com/tmont/tail-stack-events.git"
 	},
-
 	"bin": "tail-stack-events.js",
-
+	"files": [
+		"tail-stack-events.js"
+	],
 	"peerDependencies": {
-		"aws-sdk": "2.x"
+		"@aws-sdk/client-cloudformation": "3.x"
 	},
 	"devDependencies": {
-		"aws-sdk": "2.x"
+		"@aws-sdk/client-cloudformation": "3.x"
 	}
 }

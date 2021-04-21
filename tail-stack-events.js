@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 'use strict';
 
-const aws = require('aws-sdk');
+const CloudFormation = require('@aws-sdk/client-cloudformation').CloudFormation;
 const path = require('path');
 
 const red = '\x1b[31m';
@@ -11,7 +11,7 @@ const cyan = '\x1b[36m';
 const yellow = '\x1b[33m';
 const blue = '\x1b[34m';
 const green = '\x1b[32m';
-const gray = '\x1b[30;1m';
+const gray = '\x1b[38;5;245m';
 
 const wrapColor = (color, msg) => `${color}${msg}${reset}`;
 
@@ -49,38 +49,29 @@ const usage = () => {
 
 	console.log(`CloudFormation event tailer
 
-Usage: ${path.basename(__filename)} [--port port] [--procfile file] [...processes,...]
+Usage: ${path.basename(__filename)} [options...]
 
---help-h          Show this message
---stack-name,-s   Name of the stack
---die             Kill the tail when a stack completion event occurs
---follow,-f       Like "tail -f", poll forever (ignored if --die is present)
---number,-n num   Number of messages to display (max 100, defaults to 10)
---outputs         Print out the stack outputs after tailing is complete
---profile name    Name of credentials profile to use
---key key         API key to use connect to AWS
---secret secret   API secret to use to connect to AWS
---region region   The AWS region the stack is in (defaults to us-east-1)
-`);
-	console.log(`Credentials:
-  By default, this script will use the default credentials you have
-  configured on your machine (either from the "default" profile in
-  ~/.aws/credentials or in various environment variables). If you
-  wish to use a different profile, specify the name in the --profile
-  option. If you with to specify the key/secret manually, use the
-  --key and --secret options.`);
-	console.log();
+--help-h               Show this message
+--stack-name, -s name  Name of the stack
+--die                  Kill the tail when a stack completion event occurs
+--follow, -f           Like "tail -f", poll forever (ignored if --die is present)
+--number, -n num       Number of messages to display (max 100, defaults to 10)
+--outputs              Print out the stack outputs after tailing is complete
+--region region        The AWS region the stack is in (defaults to us-east-1)
 
-	console.log(`Examples:
+Credentials:
+  This will do the default AWS stuff. Set AWS_PROFILE environment variable to
+  use a different profile, or update ~/.aws/credentials, or whatever the AWS
+  docs say to do.
+
+Examples:
 
   Print five previous events and successive events until stack update is complete:
     tail-stack-events -f --die -n 5 -s my-stack
 
   Print last 20 events for a stack in us-west-2 region
     tail-stack-events -n 20 -s my-stack --region us-west-2
-
-  Using a different credentials profile from ~/.aws/credentials
-    tail-stack-events -s my-stack --profile my-profile`);
+`);
 };
 
 let stackName = null;
@@ -88,9 +79,6 @@ let die = false;
 let follow = false;
 let numEvents = null;
 let printOutputs = false;
-let credentialsProfile = null;
-let manualKey = null;
-let manualSecret = null;
 let region = 'us-east-1';
 
 const parseArgs = () => {
@@ -121,15 +109,6 @@ const parseArgs = () => {
 			case '--outputs':
 				printOutputs = true;
 				break;
-			case '--profile':
-				credentialsProfile = args[++i];
-				break;
-			case '--key':
-				manualKey = args[++i];
-				break;
-			case '--secret':
-				manualSecret = args[++i];
-				break;
 			case '--region':
 				region = args[++i];
 				break;
@@ -151,30 +130,17 @@ if (!stackName) {
 	process.exit(1);
 }
 
-if (credentialsProfile) {
-	if (manualKey || manualSecret) {
-		console.error('both profile and key/secret given, ignoring key/secret');
-	}
-
-	const credentials = new aws.SharedIniFileCredentials({ profile: credentialsProfile });
-	aws.config.update({ credentials: credentials });
-} else if (manualKey || manualSecret) {
-	aws.config.update({
-		accessKeyId: manualKey,
-		secretAccessKey: manualSecret
-	});
-}
-
-aws.config.update({ region: region });
-
-const cfn = new aws.CloudFormation();
+console.log('initializing cfn in region ' + region);
+const cfn = new CloudFormation({
+	region,
+});
 let lastEvent = null;
 let lastApiCall = 0;
 
 function getRecentStackEvents(callback) {
 	lastApiCall = Date.now();
 	const params = {
-		StackName: stackName
+		StackName: stackName,
 	};
 
 	cfn.describeStackEvents(params, (err, data) => {
@@ -218,7 +184,7 @@ function formatEvent(event) {
 		status = String.fromCharCode(0x2713) + ' ' + status;
 		statusColor = 'green';
 	} else {
-		status = String.fromCharCode(0x231B) + ' ' + status;
+		status = String.fromCharCode(0x2026) + ' ' + status;
 	}
 
 	function formatDate(timestamp) {
@@ -241,7 +207,7 @@ function formatEvent(event) {
 	}
 
 	const messages = [
-		[15, null, formatDate(event.Timestamp)],
+		[15, 'cyan', formatDate(event.Timestamp)],
 		[25, 'yellow', event.LogicalResourceId],
 		[25, 'gray', event.ResourceType.replace(/^AWS::/, '')],
 		[25, statusColor, status],
@@ -307,6 +273,8 @@ function printEvents(next) {
 			setTimeout(() => {
 				next();
 			}, waitTime);
+		} else {
+			next();
 		}
 	});
 }
@@ -329,10 +297,8 @@ async.doWhilst(printEvents, shouldKeepTailing, (err) => {
 
 			console.log();
 			result.Stacks[0].Outputs.forEach((output) => {
-				console.log(`${chalk.bold(output.OutputKey)}: ${chalk.yellow(output.OutputValue)}`);
-				if (output.Description) {
-					console.log(`  ${chalk.gray(output.Description)}`);
-				}
+				console.log(`${chalk.bold(output.OutputKey)}${output.Description ? ' - ' + output.Description : ''}`);
+				console.log(`  ` + chalk.yellow(output.OutputValue));
 			});
 
 			process.exit();
