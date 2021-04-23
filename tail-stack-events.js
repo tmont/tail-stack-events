@@ -130,7 +130,6 @@ if (!stackName) {
 	process.exit(1);
 }
 
-console.log('initializing cfn in region ' + region);
 const cfn = new CloudFormation({
 	region,
 });
