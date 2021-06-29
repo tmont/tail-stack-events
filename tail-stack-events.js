@@ -176,10 +176,10 @@ const months = [
 function formatEvent(event) {
 	let statusColor = 'blue';
 	let status = event.ResourceStatus;
-	if (/FAILED/.test(event.ResourceStatus)) {
+	if (/FAILED/.test(status)) {
 		status = String.fromCharCode(0x2717) + ' ' + status;
 		statusColor = 'red';
-	} else if (/COMPLETE/.test(event.ResourceStatus)) {
+	} else if (/COMPLETE/.test(event.ResourceStatus) && !/IN_PROGRESS/.test(status)) {
 		status = String.fromCharCode(0x2713) + ' ' + status;
 		statusColor = 'green';
 	} else {
