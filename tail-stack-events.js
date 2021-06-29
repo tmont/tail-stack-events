@@ -51,13 +51,14 @@ const usage = () => {
 
 Usage: ${path.basename(__filename)} [options...]
 
---help-h               Show this message
+--help, -h             Show this message
 --stack-name, -s name  Name of the stack
 --die                  Kill the tail when a stack completion event occurs
 --follow, -f           Like "tail -f", poll forever (ignored if --die is present)
 --number, -n num       Number of messages to display (max 100, defaults to 10)
 --outputs              Print out the stack outputs after tailing is complete
---region region        The AWS region the stack is in (defaults to us-east-1)
+--region region        The AWS region the stack is in (defaults to whatever is
+                       in your AWS profile)
 
 Credentials:
   This will do the default AWS stuff. Set AWS_PROFILE environment variable to
@@ -79,7 +80,7 @@ let die = false;
 let follow = false;
 let numEvents = null;
 let printOutputs = false;
-let region = 'us-east-1';
+let region = null;
 
 const parseArgs = () => {
 	const args = process.argv.slice(2);
@@ -130,9 +131,8 @@ if (!stackName) {
 	process.exit(1);
 }
 
-const cfn = new CloudFormation({
-	region,
-});
+const cfnOpts = region ? { region } : {};
+const cfn = new CloudFormation(cfnOpts);
 let lastEvent = null;
 let lastApiCall = 0;
 

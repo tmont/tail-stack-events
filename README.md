@@ -29,13 +29,14 @@ CloudFormation event tailer
 
 Usage: tail-stack-events.js [options...]
 
---help-h               Show this message
+--help, -h             Show this message
 --stack-name, -s name  Name of the stack
 --die                  Kill the tail when a stack completion event occurs
 --follow, -f           Like "tail -f", poll forever (ignored if --die is present)
 --number, -n num       Number of messages to display (max 100, defaults to 10)
 --outputs              Print out the stack outputs after tailing is complete
---region region        The AWS region the stack is in (defaults to us-east-1)
+--region region        The AWS region the stack is in (defaults to whatever is
+                       in your AWS profile)
 
 Credentials:
   This will do the default AWS stuff. Set AWS_PROFILE environment variable to
