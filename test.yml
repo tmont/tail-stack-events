@@ -5,7 +5,7 @@ Resources:
   TailStackEventsUser:
     Type: "AWS::IAM::User"
     Properties:
-      Path: "/glacius/"
+      Path: "/test/"
       Policies:
         - PolicyDocument:
             Version: "2012-10-17"

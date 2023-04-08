@@ -1,5 +1,4 @@
 #!/usr/bin/env node
-'use strict';
 
 const CloudFormation = require('@aws-sdk/client-cloudformation').CloudFormation;
 const path = require('path');
@@ -135,6 +134,7 @@ const cfnOpts = region ? { region } : {};
 const cfn = new CloudFormation(cfnOpts);
 let lastEvent = null;
 let lastApiCall = 0;
+let stackNoLongerExists = false;
 
 function getRecentStackEvents(callback) {
 	lastApiCall = Date.now();
@@ -239,6 +239,10 @@ function formatEvent(event) {
 }
 
 function shouldKeepTailing() {
+	if (stackNoLongerExists) {
+		return false;
+	}
+
 	if (follow) {
 		return true;
 	}
@@ -260,6 +264,13 @@ function shouldKeepTailing() {
 function printEvents(next) {
 	getRecentStackEvents((err, events) => {
 		if (err) {
+			if (!!lastEvent && /stack \[.+?] does not exist/i.test(err.message)) {
+				console.log(`${yellow}Stack no longer exists${reset}`);
+				stackNoLongerExists = true;
+				next();
+				return;
+			}
+
 			next(err);
 			return;
 		}
@@ -284,7 +295,7 @@ async.doWhilst(printEvents, shouldKeepTailing, (err) => {
 		process.exit(1);
 	}
 
-	if (printOutputs) {
+	if (printOutputs && !stackNoLongerExists) {
 		const params = {
 			StackName: stackName
 		};
