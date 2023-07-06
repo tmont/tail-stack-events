@@ -243,10 +243,6 @@ function shouldKeepTailing() {
 		return false;
 	}
 
-	if (follow) {
-		return true;
-	}
-
 	if (die) {
 		if (lastEvent &&
 			lastEvent.ResourceType === 'AWS::CloudFormation::Stack' &&
@@ -255,6 +251,10 @@ function shouldKeepTailing() {
 			return false;
 		}
 
+		return true;
+	}
+
+	if (follow) {
 		return true;
 	}
 
