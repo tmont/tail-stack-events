@@ -1,7 +1,10 @@
 #!/usr/bin/env node
 
 const CloudFormation = require('@aws-sdk/client-cloudformation').CloudFormation;
+const {defaultProvider} = require('@aws-sdk/credential-provider-node');
+const {getDefaultRoleAssumer} = require('@aws-sdk/client-sts');
 const path = require('path');
+const readline = require('readline');
 
 const red = '\x1b[31m';
 const reset = '\x1b[0m';
@@ -130,8 +133,26 @@ if (!stackName) {
 	process.exit(1);
 }
 
+const provider = defaultProvider({
+	mfaCodeProvider: (mfaSerial) => {
+		const rl = readline.createInterface(process.stdin, process.stdout);
+
+		return new Promise((resolve, reject) => {
+			rl.question(`Enter MFA code for ${mfaSerial.replace('arn:aws:iam::', '')}: `, (mfaCode) => {
+				resolve(mfaCode);
+			});
+
+			rl.on('error', reject);
+		});
+	},
+	roleAssumer: getDefaultRoleAssumer(),
+});
+
 const cfnOpts = region ? { region } : {};
-const cfn = new CloudFormation(cfnOpts);
+const cfn = new CloudFormation({
+	...cfnOpts,
+	credentials: provider,
+});
 let lastEvent = null;
 let lastApiCall = 0;
 let stackNoLongerExists = false;
